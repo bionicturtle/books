@@ -1,0 +1,560 @@
+---
+title: "Companion to: Investing in MBS, Financial Modeling with R"
+author: "Glenn M. Schultz, CFA"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Companion to Investing in MBS}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+This vignette explains the functions written to illustrate the analysis and valuation techniques outlined in the book **Investing in MBS, Financial Modeling with R**.  The companion illustrates the use of standard BondLab function calls.  In addition, the reader is encourgage to closely examine the code of the function CreditEnhancement.  The function outlines the anatomy of a BondLab function and how the user may create custom analytic solution with BondLab.
+
+# R Companion to: *Investing in MBS* 
+##*Financial Modeling with R*
+
+> Copyright 2015 John Wiley and Sons, Inc.  All rights reserved.
+Published by John wiley & Sons, Inc. Hoboken, New Jersey
+No part of this publication may be be reproduced, stored in retrieval system, or transmitted in any form 
+or by means, electronic, mechanical, photocopying, recording, scanning, or ortherwise, except as
+permitted under Section 107 or 108 of the 1976 United States Copyright Act, with either the prior written
+permission of the Publisher, or authorization through payment of the appropriate per-copy fee to the 
+Copyright Clearance Center, Inc. 222 Rosewood Drive, Danvers, MA 01923, (958) 750-8400, fac (978) 646-8600,
+or in the web at www.copyright.com.  Requests to the Publisher for permission should be addressed to the Permission Department, John Wiley and Sons, Inc., 111 River Street Hoboken, NJ 07030, (201) 748-07611,
+fax (201) 748-6068.
+
+> Limit of Liability/Disclaimer:  While the publisher and author have used their best efforts in preparing 
+this book, they make no representation or warranties with respec to the accuracy or completness of the 
+contents of this book and specifically disclaim any implied warrenties of mechantability or fitness for a 
+particular purpose.  No warranty may be created or extended by sales representatives or written sales materials.  The advice and stratigies contained herein may not be sutiable for your suituation.  You should consult with a professional where appropriate.  Neither the publisher nor author shall be 
+liable for any loss or profit or any other commerical damages, including but not limited to special, incidential, consequential, or other damages.
+
+```{r, echo= FALSE, verbose = FALSE, results = 'hide', warning=FALSE, message=FALSE}
+require(Companion2IMBS)
+```
+
+## Discounting Functions
+The time value of money is central to fixed income investing, with the concepts of present and future value
+the investor is able to both discount cash flow and calculated expected returns.  The following functions are used to compute present and future value.
+
+```{r, echo = TRUE}
+PresentValue(interest.rate = .05, number.period = 3, frequency = 1)
+```
+
+``` {r, echo = TRUE}
+FutureValue(interest.rate = .05, number.period = 3, frequency = 1)
+```
+
+An example of using the time value to discount lottery cash flow is the function LotteryPresentValue.  The function computes the present value of a series of annuity payments.  In the book example, a series of winning lottery payments.
+```{r, echo = TRUE}
+LotteryPresentValue(payment = 2777.78, interest.rate = .0530, 
+                    number.period = 360, frequency = 12)
+```
+Alternatively, the investor may be required to determine the discount rate applied to a series of cash flows such that the present value of the cash flows is equal to the inital outlay.  In the case, the investor is sloving for the internal rate of return.  The function LotteryDiscountRate illustrates the IRR calculation using uniroot.
+
+```{r, echo = TRUE}
+LotteryDiscountRate(LumpSumPayment = 500000, payment = 2777.78, 
+                    number.period = 360, frequency = 12)
+```
+
+Investors often discount cash flows along the term structure of interest rates.  Term structure modeling is done using the R package termstrc:
+  
+    Zero-Coupon Yield Curve Estimation with the Package {termstrc}
+    Robert Ferstl and Josef Hayden
+    Journal of Statistical Software
+    year: 2010
+    volume: 36
+    number: 1,
+    pages: 1-34,
+    url = {http://www.jstatsoft.org/v36/i01/},
+
+## Term Structure Modeling
+The R package BondLab provides a wrapper function *TermStructure* which calls both yield curve data and the R package termstrc.  In addition, BondLab provides functions to fit the Cox, Ingersoll, Ross single factor model.  The model is used to perform option adjusted spread analysis which is addressed later.  For more details see BondLab and termstrc help files.
+
+```{r, fig.height= 5, fig.width= 7, echo=TRUE, verbose = FALSE, warning= FALSE}
+PlotTermStructure(trade.date = "01-10-2013", method = "ns")
+```
+
+## Return Analysis
+Return analysis seeks to quantify the return of a fixed income security.  The function ReturnAnalysis illustrates the basis of cash flow return analysis and replicates Table 5.2 found in the book Investing in MBS, Financial Modeling with R.
+
+```{r, echo= TRUE, verbose = FALSE, warning=FALSE}
+signif(ReturnAnalysis(), digits = 4)
+```
+
+The function AnnualizedReturn is a helper function used by the function ReturnAnalysis
+
+```{r,echo = TRUE, verbose = FALSE, warning = FALSE}
+ReturnMatrix <- ReturnAnalysis()
+AnnualizedReturn(BeginValue = 1000,
+                 EndValue = sum(ReturnMatrix[1:10, 10, 1]),
+                 TimeHorizon = 5,
+                 Frequency = 2)
+```
+
+The book *Investing in MBS, Financial Modeling with R* discusses three common investment strategies which are identified as **buy and hold**, **absolute return**, and **total return**.  The investor using return analysis is able to compare the relative risk and return of one fixed income security over another.  The functions TotalReturn and TwistScenario illustrate the code used compare and plot total return.
+
+```r
+TotalReturn()
+```
+
+In addition to parallel shifts in the yield curve the investor may wish to examine the return profile of security under twisting yield curve scenarios.
+
+```r
+TwistScenario(bond.id = "bondlabMBS4", original.bal = 100000,
+price = 105.75, trade.date = "01-10-2013", settlement.date = "01-13-2013", method = "ns")
+```
+
+BondLab was developed to support the *Investing in MBS*.  There are a number of functions designed to create analytic objects, store results within defined classes, and produce either graphical or tabluar displays of results.  The function PassThrough.OAS is an example of a function call to the BondLab function PassThoughOAS and plotting of OAS output.
+
+## Option Adjusted Spread Analysis
+
+```r
+PassThrough.OAS(bond.id = "bondlabMBS4", trade.date = "01-10-2013",
+settlement.date = "01-13-2013", original.balance = 100000, price = 105.75, 
+sigma = .20, paths = 200)
+```
+
+REMIC OAS analysis calls the BondLab functon REMIC.OAS to report and plot the results of REMIC OAS analysis.
+
+```r
+REMICOAS(bond.id = "BondLabSEQ1", trade.date = "01-10-2013", settlement.date = "01-13-2013",
+tranche.price = 100, collateral.price = 100, sigma = 0.20, paths = 200)
+```
+# The Anatomy of a BondLab function
+
+The following explains the code structure of the companion function CreditEnhancement to illustrate how one goes about creating a custom BondLab call.  It is assumed the user is familar with functions and as result the outline focuses on the main elements of the function.
+
+> the BondLab function Rates(trade.date) passes the trade date, opens a connection to the Rates data folder, and creates the rates object.
+
+```r
+rates.data(trade.date)
+```  
+
+> The BondLab function MortageRate() opens a connection to the PrepaymentModel folder and creates the class MortgageRate whose slots are functions defining the relationship of the 15- or 30-year mortgage rate to the 2- and 10-year swap rate.
+
+```r
+MtgRate()
+```
+
+> The BondLab function MBS(MBS.id) opens a connection to the BondData folder and calls the MBS cusip information. The variables extracted from the object MBSdetails will be passed downstream to other functions.
+
+```r
+MBS(MBS.id)
+```
+
+> The BondLab function TermStructure(rates.data, method) fit the term structure 
+
+```r
+TermStructure(rates.data, method)
+```
+
+>  The fourth call is to the ModelTune(bond.id) BondLab function.  The function opens a connection to the PrepaymentModel folder and creates the prepayment model tune object which is used to the calibrate the prepayment model.  Since we are modeling expected default and loss we overide those tuning parameters which give rise to voluntary repayment.  Namely, the TurnoverRate and the Incentive tuning paramters.
+
+
+```r
+ModelTune(bond.id)
+```
+
+> The BondLab function PrepaymentAssumption projects the prepayment model either CPR, PPC, or MODEL.
+
+```r
+PrepaymentAssumption(bond.id = bond.id, MortgageRate = MortgageRate, 
+                    TermStructure = TermStructure, 
+                    PrepaymentAssumption = PrepaymentAssumption, 
+                    ModelTune = ModelTune, Burnout = Burnout, 
+                    begin.cpr = begin.cpr, end.cpr = end.cpr, 
+                    seasoning.period = seasoning.period, CPR = CPR)
+```
+
+> The BondLab function MortgageCashFlow calculates pass-through cash flow and creates the mortgage
+cash flow object
+
+```r
+MortgageCashFlow(bond.id = bond.id, original.bal = original.bal, 
+                settlement.date = settlement.date, price = price, 
+                PrepaymentAssumption = PrepaymentAssumption)
+```
+
+Notice, each function call builds the analytic framework.  For example, PrepaymentAssumption requires a call to the function TermStructure and MortgageCashFlow requires a call to the function MBS.  The reader is encourage to examine the BondLab code to understand the structure of a BondLab call.  The code can be viewed using getMethod().  For example, to view the code for PassThroughAnalytics the command is as follows.
+
+```r
+getMethod(PassThroughAnalytics)
+```
+
+## MBS Cusip Tutorial
+
+The following illustrates the basics of creating a MBS pass-through security.  The function MakeMBSDetails is used to create a MBS pass-through security.  Enter the pass-through dated date and mortgage type information.  Currently only fixed rate and ARM flat Index assumptions are supported.  Future versions of BondLab will included forward rate ARM projections as well as Interest Only and Hybrid ARMs.
+```r
+                MakeMBSDetails( 
+                  Cusip = "23456789",
+                  ID = "bondlabMBS4",
+                  BondType = "MBS",
+                  Sector = "MBS",
+                  Coupon = 4.0,
+                  IssueDate = "01-01-2013",
+                  DatedDate = "01-01-2013",
+                  Maturity = "01-01-2043",
+                  LastPmtDate = "01-01-2013",
+                  NextPmtDate = "02-01-2013",
+                  PaymentDelay = 24,     
+                  Moody = "Aaa",
+                  SP = "AAA",
+                  BondLab = "Aaa",
+                  Frequency = 12,
+                  BondBasis = "30360",
+                  GWac = 4.75,
+                  OrigLoanBal = 275000,
+                  OrigLTV = 80,
+                  AmortizationType = "fixed",
+                  AmortizationTerm = 30,     
+                  Index = "None",
+                  Margin = 0,
+                  FirstPmtDate = "01-01-2013",
+                  FinalPmtDate = "01-01-2043",
+                  Servicing = 0.25,
+                  PMI = 0.25,
+                  Gfee = 0.25,
+                  InitialInterest = "no",
+                  InterestOnlyPeriod = 0,
+                  FirstPrinPaymentDate = "1-01-2013",
+                  BalloonPmt = "no",
+                  BalloonDate = "00-00-0000",
+                  MBSFactor = 1,
+                  Model = "FH30.Generic",
+                  Burnout = 25,
+                  SATO = 0.75
+                  )
+```
+
+## Structuring Tutorial
+
+The following illustrates the basics of structuring a REMIC transaction using the BondLab structuring tool.  The example is the BondLabPAC structure.
+
+In the case of a bond structured with a sinking fund schedule (PAC or TAC) the first step is to determine the principal 
+payment schedule.  Payment schedules are saved in the Schedules folder by both deal name and group name.  The BondLab
+code below illustrates the function call to create the schedule.  Currently only PAC schedule creation is supported.
+
+```r
+MakeSchedule(bond.id = "BondLabMBS4",
+                DealName = "BondLabPAC01",
+                Group = 1,
+                original.bal = 200000000,
+                first.pmtdate = "01-25-2013",
+                trade.date = "01-10-2013",
+                settlement.date = "01-13-2013",
+                price = 105.75,
+                begin.cpr = .2,
+                end.cpr = 6,
+                seasoning.period = 30,
+                lower.PSA = 75, 
+                upper.PSA = 250)
+```
+The next step is to create the REMIC at Issuance Disclosure File **(RAID File)**.  The RAID file provides REMIC data
+at the time of issuance.
+
+```r
+MakeRAID(DealName = "BondLabPAC01", 
+             Issuer = "Bondlab", 
+             DealPriceDate = "12-01-2012", 
+             DealSettlementDate = "01-01-2013",
+             Underwriter = "Bondlab",
+             NumberofTranches = 2,
+             NumberPacSchedules = 1,
+             NumberofGroups = 1,
+             DealSize = 200000000,
+             CollateralAmount = 200000000)
+```
+Create collateral group detail.  Currently, BondLab supports aggregate collateral group data
+
+```r
+    MakeCollateral(DealName = "BondLabPAC01",
+                   Group = 1,
+                   Cusip = list("bondlabMBS4"),
+                  OrigBal = list("200000000"))
+```
+Create Tranche cusip data
+
+```r
+MakeTranche(DealName = "BondLabPAC01",
+                TrancheNumber = "1",
+                TrancheName = "A",
+                TranchePrincipal = "Pass_Through",
+                TrancheInterest = "Fix",
+                TranchePrincipalDesc = "PAC",
+                TrancheInterestDesc = "Fix",
+                Cusip = "BondLabPAC1",
+                TrancheOrigBal = 148769215,
+                TrancheDatedDate  = "01-01-2013",
+                TrancheFirstPmtDate = "01-15-2013",
+                TrancheLastPmtDate = "12-15-2042",
+                TrancheNextPmtDate = "01-15-2013",
+                TrancheCoupon = 3.0,
+                Delay = 15,
+                PrinPmtFrequency = 12,
+                InterestPmtFrequency = 12,
+                FloaterIndex = "999",
+                FloaterMargin = 0,
+                FloaterCap = 0,
+                FloaterFloor = 0,
+                FloaterFormula = function(){0},
+                PacLowBand = 75,
+                PacHighBand = 250,
+                Group = 1,
+                Schedule = TRUE,
+                Fixed = TRUE)
+      
+      MakeTranche(DealName = "BondLabPAC01",
+                  TrancheNumber = "2",
+                  TrancheName = "B",
+                  TranchePrincipal = "Pass_Through",
+                  TrancheInterest = "Fix",
+                  TranchePrincipalDesc = "CMP",
+                  TrancheInterestDesc = "Fix",
+                  Cusip = "BondLabCMP1",
+                  TrancheOrigBal = 51230785,
+                  TrancheDatedDate  = "01-01-2013",
+                  TrancheFirstPmtDate = "01-15-2013",
+                  TrancheLastPmtDate = "12-15-2042",
+                  TrancheNextPmtDate = "01-15-2013",
+                  TrancheCoupon = 6.89,
+                  Delay = 15,
+                  PrinPmtFrequency = 12,
+                  InterestPmtFrequency = 12,
+                  FloaterIndex = "999",
+                  FloaterMargin = 0,
+                  FloaterCap = 0,
+                  FloaterFloor = 0,
+                  FloaterFormula = function(){0},
+                  PacLowBand = 000,
+                  PacHighBand = 000,
+                  Group = 1,
+                  Schedule = TRUE,
+                  Fixed = TRUE)
+```
+Create monthly factor file objects.  These objects store the REMIC disclosure month end **(RDME)** data.  Note a factor file is created for each tranche.
+
+```r
+      MakeRDME(DealName = "BondLabPAC01",
+               TrancheNumber = 1,
+               Cusip = "BondLabPAC1",
+               PaymentDate = "01-01-2013",
+               Coupon = 3.0,
+               Factor = 1)
+      
+      MakeRDME(DealName = "BondLabPAC01",
+               TrancheNumber = 2,
+               Cusip = "BondLabCMP1",
+               PaymentDate = "1-01-2013",
+               Coupon = 6.33,
+               Factor = 1)
+```               
+
+REMIC structure is the constructor function for the REMIC strucuturing umbrella.  The function creates the REMIC and saves the REMICData folder and serializes tranche data to the BondData folder
+
+```r
+    RemicStructure("BondLabPAC01")   
+```    
+
+Once the REMIC structure and structuring elements (PAC Schedules) are created the waterfall file must be scripted.  The waterfall files are not encoded and are human readable script files.  The BondLabPAC01 waterfall file script is as follows:
+
+ 
+## **Cashflow Waterfall for BondLabPAC01**
+  
+  
+    The below are standard calculations that must be done before the waterfall
+    There are two arrays to the cash waterfall the first acrrued and balance
+    the second is the cash waterfall array  
+    Retrieve Collateral Casflow needed for waterfall allocation
+  
+    Period <- as.numeric(Collateral@Period)
+    PmtDate <- as.character(Collateral@PmtDate)
+    BeginBal <- as.numeric(Collateral@BeginningBal)
+    Interest <- as.numeric(Collateral@PassThroughInterest)
+    Scheduled <- as.numeric(Collateral@ScheduledPrin)
+    Prepaid <- as.numeric(Collateral@PrepaidPrin)
+    TotalPrin <- as.numeric(Collateral@ScheduledPrin + 
+    Collateral@PrepaidPrin + 
+    Collateral@RecoveredAmount)
+    EndBal <- as.numeric(Collateral@EndingBal)
+  
+## Calculate days of acrrued
+    days.to.nextpmt = (BondBasisConversion(issue.date = issue.date,
+                                         start.date = start.date,
+                                         end.date = end.date,
+                                         settlement.date = settlement.date,
+                                         lastpmt.date = lastpmtdate,
+                                         nextpmt.date = nextpmt.date) * 360)
+
+    build a vector of dates for the REMIC payment schedule
+    first get the pmtdate interval
+    payment Frequency
+    payment.frequency = REMIC.Deal@Tranches[[as.numeric(REMIC.Tranche@TrancheNumber)]]
+    @PrinPmtFrequency
+    pmtdate.interval = 12/payment.frequency
+
+  
+## Then compute the payment dates
+    REMIC.pmtdate = as.Date(c(if(settlement.date == issue.date) 
+                          {seq(start.date, end.date, by = paste(pmtdate.interval, "months"))} 
+                          else 
+                          {seq(nextpmt.date, end.date, by = paste(pmtdate.interval, "months"))}), 
+                          "%m-%d-%Y")
+  
+    build the time period vector (n) 
+    for discounting the cashflows nextpmt date is vector of payment dates to n for each period
+    REMIC.time.period = BondBasisConversion(issue.date = issue.date, 
+                                            start.date = start.date, 
+                                            end.date = end.date, 
+                                            settlement.date =  settlement.date, 
+                                            lastpmt.date = lastpmt.date, 
+                                            nextpmt.date = REMIC.pmtdate)
+                                            
+## Build collateral cashflow table for the REMIC waterfall
+  
+    CollateralCashFlow <- cbind(Period, PmtDate, BeginBal, Interest, 
+    Scheduled, Prepaid, TotalPrin, EndBal)
+    NoPeriod <- nrow(CollateralCashFlow)
+    NoCol <- REMIC.Deal@NumberofTranches
+  
+    get the length of the factor data class to call the last available factor
+    FactorRecords <- length(REMIC.Deal@FactorData[[1]]@PaymentDate)
+    TrancheFactors <- array(data = 0, c(1,NoCol))
+    colnames(TrancheFactors) <- c(rep((paste("Tranche_",seq(1:NoCol)))))
+    for(tf in 1:NoCol){
+    TrancheFactors[1,tf] <- REMIC.Deal@FactorData[[tf]]@Factor
+    }
+  
+##  Dimension Array to hold settlement data
+    Dimension values for tranche interest and principal arrays
+    Table 1 is the current balance, 
+    Table 2 is the acrrued, 
+    Table 3 principal payment
+    Table 4 is proceeds
+    Dim array to hold the variables
+    Populate begin values of the tranches current balance, acrrued interest, proceeds
+    TrancheBeginValue <- array(data = 0, c(1, (NoCol), 4))
+    Populate the current principal balance
+    for(pb in 1:NoCol){
+    TrancheBeginValue[1,pb,1] <- REMIC.Deal@Tranches[[pb]]@TrancheOrigBal * TrancheFactors[1, pb]
+    }
+    
+## Populate the acrrued interest
+    for(ai in 1:NoCol){
+    add days to next payment then acrrued can be calculated for any tranche pmt scheme
+    frequency = REMIC.Deal@Tranches[[ai]]@InterestPmtFrequency
+    days.between.pmtdate = ((months.in.year/frequency)/months.in.year) * 360
+    days.of.accrued = (days.between.pmtdate - days.to.nextpmt)
+    TrancheBeginValue[1,ai,2] = (days.of.accrued/days.between.pmtdate) *  
+    (REMIC.Deal@Tranches[[ai]]@TrancheCoupon/100) / REMIC.Deal@Tranches[[ai]]@InterestPmtFrequency *
+    TrancheBeginValue[1,ai,1]
+    }
+   
+## Compute the principal proceeds
+    for(prin in 1:NoCol){
+    TrancheBeginValue[1,prin,3] <- if(prin != REMIC.Tranche@TrancheNumber) 
+                                {TrancheBeginValue[1,prin,1]} else
+    {(TrancheBeginValue[1,prin,1] * tranche.price)}
+    }
+  
+## Compute the proceeds
+    TrancheBeginValue[,,4] <- (TrancheBeginValue[,,2] + TrancheBeginValue[,,3])
+    set-up the coupon array this is used to allocate interest
+    CouponArray <- array(data = 0, c(NoPeriod, NoCol))
+    for(ca.row in 1:NoPeriod){
+    for(ca.col in 1:NoCol){
+    CouponArray[ca.row, ca.col] <- (REMIC.Deal@Tranches[[ca.col]]@TrancheCoupon/100)/frequency
+    }
+    }
+
+## Dimension the REMIC cashflow Array
+    columns is the number of tranches, rows correspond to the number cashflows, (r, c, t)
+    There are 4 tables,
+    Table 1 = principal bal outstanding, 
+    Table 2 = interest, 
+    Table 3 = principal pmt, 
+    Table 4 = total cashflow
+    TrancheCashFlow <- array(data = 0, c((NoPeriod + 1), (NoCol), 4))
+    colnames(TrancheCashFlow) <- c(rep((paste("Tranche_",seq(1:NoCol)))))
+    populate the first row of the cashflow array with proceeds
+    for(table in 1:4){
+    for(column in 1: NoCol){
+       TrancheCashFlow[1, column, table] <- 
+            if(table != 3) {TrancheBeginValue[1, column, table]} else {0}
+    }
+    }
+  
+## Check for Bond Schedules
+    if(isTRUE(REMIC.Tranche@Schedule)) {schedule <- REMICSchedules(REMIC.Tranche = REMIC.Tranche)} 
+    else {schedule <- NULL}
+    get the REMIC Schedule start value
+    if(isTRUE(REMIC.Tranche@Schedule)) 
+    {schedule.period <- length(as.numeric(REMIC.Deal@FactorData
+    [[as.numeric(REMIC.Tranche@TrancheNumber)]]@PaymentDate))} 
+    else 
+    {schedule.period <- NULL}
+  
+## This section begins the cash flow waterfall of the REMIC
+
+    for(waterfall in 2:NoPeriod){
+    First, allocate interest
+    for(interest in 1:NoCol)
+    {TrancheCashFlow[waterfall, interest, 2] <- as.numeric(CouponArray[waterfall-1, interest]) * 
+                                              as.numeric(TrancheCashFlow[waterfall-1, interest, 1])}
+                                              
+##Second, allocate principal to the PAC according to its schedule
+
+    determine the principal due to the PAC based on outstanding balance
+    Note: you must call the PAC from the REMIC Class not the tranche 
+    class for the PAC scheduled principal calculation principal due the PAC
+    if(waterfall - 1 == 1) {principal = REMIC.Deal@Tranches[[1]]@
+    TrancheOrigBal - schedule@Balance[waterfall-1]} 
+    else
+    {principal = max(0,TrancheCashFlow[waterfall-1, 1, 1] - 
+    schedule@Balance[waterfall-1])}
+    end
+    pay the PAC bond first
+    if(as.numeric(TrancheCashFlow[waterfall-1, 1, 1]) == 0) {TrancheCashFlow[waterfall, 1, 3] = 0} 
+    else
+    {TrancheCashFlow[waterfall, 1, 3] = min(as.numeric(principal), 
+    as.numeric(CollateralCashFlow[waterfall, 7]))}
+    end
+## Pay companion bond
+
+    if(as.numeric(TrancheCashFlow[waterfall -1, 2, 1]) == 0) 
+    {TrancheCashFlow[waterfall, 2, 3] = 0
+    TrancheCashFlow[waterfall, 1, 3] = as.numeric(TrancheCashFlow[waterfall, 1, 3]) + 
+      as.numeric(CollateralCashFlow[waterfall,7]) - as.numeric(TrancheCashFlow[waterfall, 1, 3])} 
+    else
+    {TrancheCashFlow[waterfall,2,3] = min(TrancheCashFlow[waterfall -1, 2,1],  
+    max(0,as.numeric(CollateralCashFlow[waterfall,7]) - as.numeric(principal)))} 
+    end
+  
+## Third compute ending balance
+
+    for(balance in 1:NoCol){
+    TrancheCashFlow[waterfall, balance, 1] <- as.numeric(TrancheCashFlow[waterfall -1, balance, 1])
+    as.numeric(TrancheCashFlow[waterfall, balance, 3])
+    } 
+  
+## Fourth compute tranche cashflow
+
+    for(tranche in 1:NoCol){
+    TrancheCashFlow[waterfall, tranche, 4] <- as.numeric(TrancheCashFlow[waterfall, tranche, 2]) +
+                                              as.numeric(TrancheCashFlow[waterfall, tranche, 3])
+    }
+    } # End of Waterfall For Loop
+   
+## Return Tranche Cash Flows
+
+    Period <- Collateral@Period
+    PmtDate <- as.character(REMIC.pmtdate)
+    
+    TimePeriod <- REMIC.time.period
+    Interest <- TrancheCashFlow[2:(NoPeriod + 1), as.numeric(REMIC.Tranche@TrancheNumber),2]
+    Principal <- TrancheCashFlow[2:(NoPeriod + 1), as.numeric(REMIC.Tranche@TrancheNumber), 3]
+    TrancheCF <- TrancheCashFlow[2:(NoPeriod + 1),as.numeric(REMIC.Tranche@TrancheNumber),4]
+    REMICCashFlow <- as.matrix(cbind(Period, PmtDate, TimePeriod, Interest, Principal, TrancheCF ))
+
+  
+  

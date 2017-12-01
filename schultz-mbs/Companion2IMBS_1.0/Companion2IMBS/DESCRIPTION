@@ -1,0 +1,17 @@
+Package: Companion2IMBS
+Type: Package
+Title: A package supporting the book Investing in MBS
+Version: 1.0
+Date: 2015-02-14
+Author: Glenn Schultz, CFA
+Maintainer: <glennmschultz@me.com>
+Description: Companion to Investing in MBS is an R package companion 
+        to the book Investing in MBS.  The package illustrates vaulation
+        of MBS using BondLab function calls.  
+Imports: ggplot2, termstrc, reshape2, lubridate
+Depends: BondLab
+License: GPL(>=3.0)
+Suggests: knitr
+VignetteBuilder: knitr
+NeedsCompilation: no
+Packaged: 2015-07-17 00:59:22 UTC; glennschultz

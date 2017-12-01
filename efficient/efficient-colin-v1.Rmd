@@ -1,0 +1,67 @@
+---
+title: "Efficient R by Colin Gillespie and Robin Lovelace, My Notes"
+output: html_notebook
+---
+
+## Book resources
+
+```{r}
+
+# debug(devtools::install_github("csgillespie/efficient"))
+# devtools::install_github("csgillespie/efficientR")
+# devtools::install_github("csgillespie/efficient", build_vignettes = TRUE)
+
+library("microbenchmark")
+library("profvis")
+library("ggplot2")
+
+```
+
+
+## Efficient setup
+
+Two files are read each time R starts (unless one of the command line options outlined above is used):
+
+* .Renviron sets environment variables. These tell R where to find external programs and can hold user-specific information than needs to be kept secret, typically API keys.
+
+* .Rprofile is a plain text file (which is always called .Rprofile, hence its name) that simply runs lines of R code every time R starts. If you want R to check for package updates each time it starts (as explained in the previous section), you simply add the relevant line somewhere in this file.
+
+Files in three folders are important in this process:
+
+* R_HOME, the directory in which R is installed. The etc sub-directory can contain start-up files read early on in the start-up process. Find out where your R_HOME is with the R.home() command.
+
+* HOME, the user's home directory. Typically this is /home/username on Unix machines or C:\Users\username on Windows (since Windows 7). Ask R where your home directory is with, Sys.getenv("HOME").
+
+* R's current working directory. This is reported by getwd().
+
+```{r echo=TRUE}
+
+R.home()
+Sys.getenv("HOME")
+getwd()
+
+```
+
+### To check for site-wide .Rprofile
+```{r}
+site_path = R.home(component = "home")
+fname = file.path(site_path, "etc", "Rprofile.site")
+file.exists(fname)
+```
+
+
+
+## Loading R packages
+
+This is a good [link with "proper solution" of changing Windows environment variable]( https://stackoverflow.com/questions/15170399/changing-r-default-library-path-using-libpaths-in-rprofile-site-fails-to-work) but I think easier is here at https://stackoverflow.com/questions/31707941/how-do-i-change-the-default-library-path-for-r-packages
+
+
+```{r}
+plot(cars)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
